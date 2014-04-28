@@ -1,84 +1,59 @@
-// Learning Processing
-// Daniel Shiffman
-// http://www.learningprocessing.com
-
-// Example 19-2: Simple therapy client
-
-// Import the net libraries
 import processing.net.*;
-// Declare a client
-Client client;
+import org.json.*;
 
-// Used to indicate a new message
-float newMessageColor = 0;
-// A String to hold whatever the server says
-String messageFromServer = "";
-// A String to hold what the user types
-String typing ="";
+Client client;
 int width = 1400;
 int height = 800;
-int rectSize = 4;
-PFont f;
 
 void setup() {
   size(width, height, P3D);
-
-  // Create the Client, connect to server at 127.0.0.1 (localhost), port 5204
   client = new Client(this, "127.0.0.1", 8080);
-  f = createFont("Arial", 16, true);
-  background(255);
 }
 
 void draw() {
-  // If there is information available to read
-  // (we know there is a message from the Server when there are greater than zero bytes available.)
-  while (client.available () > 0) {
-    
-    background(255);
-    stroke(0, 0, 0);
-    line(111, 580, 1107, 580.0);
-    line(1107, 580, 1107, 343);
-    while (true) {
-      String messageSoFar = null;
-      while (messageSoFar == null) {
-        messageSoFar = client.readStringUntil('\n');
+  background(255);
+  String messageSoFar = null;
+  while (messageSoFar == null) {
+    try {
+      messageSoFar = client.readStringUntil('\n');
+//      System.out.print(messageSoFar);
+      org.json.JSONObject scene = new org.json.JSONObject(messageSoFar);
+      org.json.JSONArray lines = scene.getJSONArray("lines");
+      for (int index = 0; index < lines.length(); index++) {
+        stroke(0, 0, 0);
+        pushMatrix();
+        float x1 = (float) lines.optJSONObject(index).getJSONArray("Point1").getDouble(0);
+        float y1 = (float) lines.optJSONObject(index).getJSONArray("Point1").getDouble(1);
+        float x2 = (float) lines.optJSONObject(index).getJSONArray("Point2").getDouble(0);
+        float y2 = (float) lines.optJSONObject(index).getJSONArray("Point2").getDouble(1);
+        float width = x2 - x1;
+        float height = y2 - y1;
+        translate(x1 + (width / 2), y1 + (height / 2));
+        box(width, height, 50);
+        popMatrix();
       }
-      if (messageSoFar.contains("refresh")) {
-        camera(mouseX, height/2, (height/2) / tan(PI/6), width/2, height/2, 0, 0, 1, 0);
-        return;
-      }
-      String[] s1 = messageSoFar.split(",");
-
-      try {
+      org.json.JSONArray results = scene.getJSONArray("boxes");
+      for (int index = 0; index < results.length(); index++) {
+        org.json.JSONObject box = results.optJSONObject(index);
         pushMatrix();
         float radius = 25;
-
-        int i = Integer.parseInt(s1[0]);
-        float x = Float.parseFloat(s1[1]);
-        float y = Float.parseFloat(s1[2]);
-        float a  = Float.parseFloat(s1[3]);
-
+        int i = box.getInt("Id");
+        float x = (float)box.getDouble("X");
+        float y = (float)box.getDouble("Y");
+        float a  = (float)box.getDouble("A");
         float px = x + cos(radians(a))*radius;
         float py = y + sin(radians(a))*radius;
-
         stroke(i%255, i*10%255, i*100%255);
         fill(i%255, i*10%255, i*100%255);
-  
         translate(x, y);
-        sphere(25);
-        popMatrix();        
-
-        //ellipse(x, y, 50, 50);
-    //    fill(0);
-  //      stroke(0);
-//        line(x, y, px, py);  
-        //System.out.println(a);
-
-      }
-      catch(Exception e) {
-        System.out.println(e);
+        rotate(a);
+        box(50, 50, 50);
+        popMatrix();
       }
     }
+    catch(Exception e) {
+    }
   }
+  camera(mouseX, height/2, (height/2) / tan(PI/6), width/2, mouseY, 0, 0, 1, 0);
 }
 
